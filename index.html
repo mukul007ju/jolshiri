@@ -1,0 +1,120 @@
+<?php
+function getData(){
+require "./dbinfo.php";
+
+}
+?>
+<!DOCTYPE html>
+<html>
+<head>
+
+<title> GEOJSON WEB MAP </title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<!--Leaflet CSS-->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+   integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+   crossorigin=""/>
+   
+<!--Leaflet JS-->
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+   integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+   crossorigin=""></script>
+   
+<!--Custom CSS-->
+<link rel="stylesheet" href="./css/mystyle.css"/>
+
+</head>
+
+<body>
+		<div id="map"></div>
+		<script type="text/javascript">
+		
+		//Funtion to read GEOJSON data array returen from async await
+		function addGeojsonFeatureFunc(feature, layer){
+		layer.bindPopup("<b>"+feature.properties.use+"</b><br />"+
+		feature.properties.katha+ " Katha");
+		}
+		
+		//Define Layer Group
+		var jolshiri = new L.featureGroup();
+		
+		
+		//style cartographic layer
+		function styleFunction(feature){
+		return {
+			fillColor: "red",
+			color: "blue",
+			weight: 1
+			}
+			}
+		
+		
+		//Map attributes
+		var mapAttr="";
+		
+		//OSM B&W Tiles
+		var osmUrl=
+		"https://{s}.tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png";
+		var osm = L.tileLayer(osmUrl, {attribution: mapAttr});
+		
+		//CartoDB Tiles
+		var cartodbUrl = 
+		"https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+		var cartodb = L.tileLayer(cartodbUrl, {
+		attribution: mapAttr,
+		subdomains: "abcd",
+		maxZoom:19
+		});
+		
+		//ESRI Map tiles
+		var esriUrl =
+		"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+		var Esri_WorldImagery = L.tileLayer(esriUrl, {attribution:mapAttr});
+		
+		var mymap = L.map("map",{
+		zoom:15,
+		layers: [Esri_WorldImagery, jolshiri]
+		}).setView([23.809357, 90.502539], 15.5); 
+		
+		//Get GEOJSON Data from API 
+		async function getGeojson(){
+			try {
+			const response = await fetch ("./postgis2geojson.php");
+			return await response.json(); 
+			} catch(err) {
+			console.log(err);
+			}
+		}
+
+	getGeojson().then(data => {
+	// Add GEOJSON Layer in Leaflet
+	L.geoJSON([data], {
+	onEachFeature: addGeojsonFeatureFunc,
+	}).addTo(jolshiri);
+	});
+	
+
+	
+		//Base Layers 
+		var baseLayers = {
+		"CartoDB": cartodb,
+		"OSM MAP": osm,
+		"ESRI SAT": Esri_WorldImagery
+		};
+		
+		//Overlay Vector Layers
+		var overlays = {
+		"JOLSHIRI MASTER PLAN": jolshiri
+		};
+		
+		
+		
+		//Draw All Layers
+		var controlLayers = L.control.layers(baseLayers, null, {collapsed:false}).addTo(
+		mymap);
+		</script>
+</body>
+
+</html>
